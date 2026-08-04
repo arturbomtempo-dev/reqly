@@ -63,7 +63,7 @@ export function RequestModule() {
                 <TabBar />
                 <div className="flex-1 flex flex-col gap-3 p-4 min-h-0 overflow-hidden">
                     <UrlBar />
-                    <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-3 min-h-0">
+                    <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 grid-rows-1 gap-3 min-h-0">
                         <RequestPanel />
                         <ResponsePanel />
                     </div>

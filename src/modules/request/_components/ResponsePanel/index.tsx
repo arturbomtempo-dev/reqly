@@ -89,7 +89,7 @@ function ResponseBody({ response }: { response: ApiResponse }) {
     const headerCount = Object.keys(response.headers).length;
 
     return (
-        <Tabs defaultValue="body" className="flex flex-col">
+        <Tabs defaultValue="body" className="flex-1 flex flex-col min-h-0">
             <div className="px-3 pt-2 border-b border-(--color-border) shrink-0">
                 <TabsList className="h-8 bg-transparent gap-0 p-0">
                     <TabsTrigger
@@ -112,7 +112,7 @@ function ResponseBody({ response }: { response: ApiResponse }) {
                 </TabsList>
             </div>
 
-            <TabsContent value="body" className="m-0">
+            <TabsContent value="body" className="flex-1 min-h-0 overflow-auto m-0">
                 {isImage ? (
                     <div className="flex items-center justify-center p-4">
                         <img
@@ -128,14 +128,13 @@ function ResponseBody({ response }: { response: ApiResponse }) {
                         value={formatted}
                         language={language}
                         readOnly
-                        autoHeight
                         minHeight="200px"
-                        className="border-0 rounded-none"
+                        className="h-full border-0 rounded-none"
                     />
                 )}
             </TabsContent>
 
-            <TabsContent value="headers" className="m-0">
+            <TabsContent value="headers" className="flex-1 min-h-0 overflow-auto m-0">
                 <div className="p-3 space-y-0">
                     {Object.entries(response.headers).map(([k, v]) => (
                         <div
@@ -186,7 +185,7 @@ export function ResponsePanel() {
     }
 
     return (
-        <div className="flex flex-col h-full border border-(--color-border) rounded-md bg-(--color-surface) overflow-y-auto">
+        <div className="flex flex-col h-full min-h-0 border border-(--color-border) rounded-md bg-(--color-surface) overflow-hidden">
             <ResponseMeta response={response} />
             <ResponseBody key={requestId} response={response} />
         </div>

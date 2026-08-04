@@ -17,7 +17,6 @@ interface CodeEditorProps {
     readOnly?: boolean;
     className?: string;
     minHeight?: string;
-    autoHeight?: boolean;
 }
 
 export function CodeEditor({
@@ -27,7 +26,6 @@ export function CodeEditor({
     readOnly = false,
     className,
     minHeight = '220px',
-    autoHeight = false,
 }: CodeEditorProps) {
     const { theme } = useTheme();
     const isDark = theme === 'dark';
@@ -64,7 +62,7 @@ export function CodeEditor({
             EditorView.theme(
                 {
                     '&.cm-editor': {
-                        height: autoHeight ? 'auto' : '100%',
+                        height: '100%',
                         minHeight,
                         fontSize: '12px',
                         backgroundColor: 'transparent',
@@ -78,7 +76,7 @@ export function CodeEditor({
                         fontFamily:
                             'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
                         overflowX: 'auto',
-                        overflowY: autoHeight ? 'visible' : 'auto',
+                        overflowY: 'auto',
                     },
                     '.cm-content': {
                         padding: '12px',
@@ -116,11 +114,11 @@ export function CodeEditor({
                 },
                 { dark: isDark }
             ),
-        [isDark, minHeight, autoHeight]
+        [isDark, minHeight]
     );
 
     return (
-        <div className={cn('overflow-x-auto bg-transparent', className)}>
+        <div className={cn('h-full overflow-hidden bg-transparent', className)}>
             <CodeMirror
                 value={value}
                 onChange={(next) => onChange?.(next)}

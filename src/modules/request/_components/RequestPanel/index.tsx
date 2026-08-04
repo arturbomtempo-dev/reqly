@@ -90,7 +90,7 @@ export function RequestPanel() {
                     </TabsList>
                 </div>
 
-                <TabsContent value="params" className="flex-1 overflow-auto p-3 m-0">
+                <TabsContent value="params" className="flex-1 min-h-0 overflow-auto p-3 m-0">
                     <KeyValueEditor
                         items={params}
                         onChange={setParams}
@@ -98,13 +98,16 @@ export function RequestPanel() {
                     />
                 </TabsContent>
 
-                <TabsContent value="headers" className="flex-1 overflow-auto p-3 m-0">
+                <TabsContent value="headers" className="flex-1 min-h-0 overflow-auto p-3 m-0">
                     <KeyValueEditor items={headers} onChange={setHeaders} keyPlaceholder="Header" />
                 </TabsContent>
 
-                <TabsContent value="body" className="flex-1 overflow-auto p-3 m-0 space-y-3">
+                <TabsContent
+                    value="body"
+                    className="flex-1 min-h-0 overflow-hidden p-3 m-0 flex flex-col gap-3"
+                >
                     <Select value={bodyType} onValueChange={(v) => setBodyType(v as BodyType)}>
-                        <SelectTrigger className="h-7 w-44 text-xs">
+                        <SelectTrigger className="h-7 w-44 text-xs shrink-0">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -116,36 +119,39 @@ export function RequestPanel() {
                         </SelectContent>
                     </Select>
 
-                    {bodyType === 'none' && (
-                        <p className="text-xs text-(--color-text-subtle) py-2">
-                            This request has no body.
-                        </p>
-                    )}
+                    <div className="flex-1 min-h-0 overflow-auto">
+                        {bodyType === 'none' && (
+                            <p className="text-xs text-(--color-text-subtle) py-2">
+                                This request has no body.
+                            </p>
+                        )}
 
-                    {(bodyType === 'json' || bodyType === 'xml' || bodyType === 'text') && (
-                        <CodeEditor
-                            value={body}
-                            onChange={setBody}
-                            language={bodyType}
-                            minHeight="220px"
-                        />
-                    )}
+                        {(bodyType === 'json' || bodyType === 'xml' || bodyType === 'text') && (
+                            <CodeEditor
+                                value={body}
+                                onChange={setBody}
+                                language={bodyType}
+                                minHeight="220px"
+                                className="h-full"
+                            />
+                        )}
 
-                    {bodyType === 'form' && (
-                        <KeyValueEditor items={formBody} onChange={setFormBody} />
-                    )}
+                        {bodyType === 'form' && (
+                            <KeyValueEditor items={formBody} onChange={setFormBody} />
+                        )}
 
-                    {bodyType === 'multipart' && (
-                        <FormDataEditor
-                            items={multipartBody}
-                            onChange={setMultipartBody}
-                            files={multipartFiles}
-                            onFilesChange={setMultipartFiles}
-                        />
-                    )}
+                        {bodyType === 'multipart' && (
+                            <FormDataEditor
+                                items={multipartBody}
+                                onChange={setMultipartBody}
+                                files={multipartFiles}
+                                onFilesChange={setMultipartFiles}
+                            />
+                        )}
+                    </div>
                 </TabsContent>
 
-                <TabsContent value="auth" className="flex-1 overflow-auto p-3 m-0">
+                <TabsContent value="auth" className="flex-1 min-h-0 overflow-auto p-3 m-0">
                     <AuthEditor />
                 </TabsContent>
             </Tabs>
