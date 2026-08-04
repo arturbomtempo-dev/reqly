@@ -8,6 +8,7 @@ import {
     SelectValue,
 } from '@/shared/components/ui/Select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/Tabs';
+import { usePersistedTab } from '@/shared/lib/use-persisted-tab';
 import { useRequestStore } from '../../_store';
 import type { BodyType } from '../../_types';
 import { AuthEditor } from '../AuthEditor';
@@ -44,10 +45,15 @@ export function RequestPanel() {
 
     const enabledParamsCount = params.filter((p) => p.enabled && p.key).length;
     const enabledHeadersCount = headers.filter((h) => h.enabled && h.key).length;
+    const [activeTab, setActiveTab] = usePersistedTab('reqly:requestPanelTab', 'params');
 
     return (
         <div className="flex flex-col h-full min-h-0 border border-(--color-border) rounded-md bg-(--color-surface) overflow-hidden">
-            <Tabs defaultValue="params" className="flex flex-col h-full min-h-0">
+            <Tabs
+                value={activeTab}
+                onValueChange={setActiveTab}
+                className="flex flex-col h-full min-h-0"
+            >
                 <div className="px-3 pt-2 border-b border-(--color-border) shrink-0">
                     <TabsList className="h-8 bg-transparent gap-0 p-0">
                         <TabsTrigger

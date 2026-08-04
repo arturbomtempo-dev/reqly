@@ -1,6 +1,7 @@
 import { Button } from '@/shared/components/ui/Button';
 import { CodeEditor } from '@/shared/components/ui/CodeEditor';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/Tabs';
+import { usePersistedTab } from '@/shared/lib/use-persisted-tab';
 import { cn } from '@/shared/utils/cn';
 import { formatBytes, formatJson, formatXml } from '@/shared/utils/format';
 import { Check, Copy, Inbox, Loader2 } from 'lucide-react';
@@ -87,9 +88,14 @@ function ResponseBody({ response }: { response: ApiResponse }) {
     );
 
     const headerCount = Object.keys(response.headers).length;
+    const [activeTab, setActiveTab] = usePersistedTab('reqly:responsePanelTab', 'body');
 
     return (
-        <Tabs defaultValue="body" className="flex-1 flex flex-col min-h-0">
+        <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="flex-1 flex flex-col min-h-0"
+        >
             <div className="px-3 pt-2 border-b border-(--color-border) shrink-0">
                 <TabsList className="h-8 bg-transparent gap-0 p-0">
                     <TabsTrigger
