@@ -120,6 +120,7 @@ export function CodeEditor({
     return (
         <div className={cn('h-full overflow-hidden bg-transparent', className)}>
             <CodeMirror
+                className="h-full"
                 value={value}
                 onChange={(next) => onChange?.(next)}
                 readOnly={readOnly}
