@@ -2,6 +2,7 @@ import { Input } from '@/shared/components/ui/Input';
 import { cn } from '@/shared/utils/cn';
 import {
     ChevronRight,
+    Download,
     FolderOpen,
     FolderPlus,
     MoreHorizontal,
@@ -15,6 +16,7 @@ import { defaultSnapshot, useTabsStore } from '../../../_store/tabs';
 import type { Collection } from '../../../_types';
 import { ContextMenu } from '../ContextMenu';
 import { drag } from '../drag';
+import { ExportCollectionDialog } from '../ExportCollectionDialog';
 import { InlineEdit } from '../InlineEdit';
 import { RequestItem } from '../RequestItem';
 import { captureSnapshot, openSavedRequest } from '../utils';
@@ -81,6 +83,7 @@ export function CollectionItem({
     const [editing, setEditing] = useState(false);
     const [creatingFolder, setCreatingFolder] = useState(false);
     const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+    const [exportOpen, setExportOpen] = useState(false);
     const [dragOver, setDragOver] = useState(false);
 
     const handleContextMenu = (e: React.MouseEvent) => {
@@ -273,6 +276,15 @@ export function CollectionItem({
                             icon: Plus,
                             onClick: createAndOpenRequest,
                         },
+                        ...(depth === 0
+                            ? [
+                                  {
+                                      label: 'Export',
+                                      icon: Download,
+                                      onClick: () => setExportOpen(true),
+                                  },
+                              ]
+                            : []),
                         {
                             label: depth === 0 ? 'Delete collection' : 'Delete folder',
                             icon: Trash2,
@@ -280,6 +292,14 @@ export function CollectionItem({
                             destructive: true,
                         },
                     ]}
+                />
+            )}
+
+            {depth === 0 && (
+                <ExportCollectionDialog
+                    open={exportOpen}
+                    onClose={() => setExportOpen(false)}
+                    collection={collection}
                 />
             )}
         </div>

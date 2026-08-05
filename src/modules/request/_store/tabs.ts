@@ -62,6 +62,11 @@ interface TabsActions {
 
 const initialTab = newTab();
 
+// Large response bodies (big JSON payloads, HTML pages, etc.) can quietly fill
+// up localStorage's origin quota across several open tabs, starving other
+// features (like collection import) of space. Cap what gets persisted.
+const MAX_PERSISTED_RESPONSE_BODY = 200_000;
+
 export const useTabsStore = create<TabsState & TabsActions>()(
     persist(
         (set, get) => ({
@@ -170,7 +175,14 @@ export const useTabsStore = create<TabsState & TabsActions>()(
                     snapshot: {
                         ...t.snapshot,
                         response: t.snapshot.response
-                            ? { ...t.snapshot.response, previewUrl: null }
+                            ? {
+                                  ...t.snapshot.response,
+                                  previewUrl: null,
+                                  body:
+                                      t.snapshot.response.body.length > MAX_PERSISTED_RESPONSE_BODY
+                                          ? ''
+                                          : t.snapshot.response.body,
+                              }
                             : null,
                     },
                 })),

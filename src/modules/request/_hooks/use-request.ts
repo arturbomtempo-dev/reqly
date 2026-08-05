@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { useRequestStore } from '../_store';
+import { useVariablesStore } from '../_store/variables';
 
 function getMimeType(contentType: string): string {
     return contentType.split(';')[0]?.trim().toLowerCase() ?? '';
@@ -41,6 +42,7 @@ export function useRequest() {
     const send = async () => {
         const { url, method, params, headers, bodyType, body, formBody, auth } =
             useRequestStore.getState();
+        const { interpolate } = useVariablesStore.getState();
 
         if (!url.trim()) return;
 
@@ -50,23 +52,29 @@ export function useRequest() {
         setResponse(null);
 
         try {
+            const resolvedUrl = interpolate(url.trim());
+
             const reqParams: Record<string, string> = {};
-            params.filter((p) => p.enabled && p.key).forEach((p) => (reqParams[p.key] = p.value));
+            params
+                .filter((p) => p.enabled && p.key)
+                .forEach((p) => (reqParams[interpolate(p.key)] = interpolate(p.value)));
 
             const reqHeaders: Record<string, string> = {};
-            headers.filter((h) => h.enabled && h.key).forEach((h) => (reqHeaders[h.key] = h.value));
+            headers
+                .filter((h) => h.enabled && h.key)
+                .forEach((h) => (reqHeaders[interpolate(h.key)] = interpolate(h.value)));
 
             if (auth.type === 'bearer' && auth.token) {
                 const prefix = auth.prefix || 'Bearer';
-                reqHeaders['Authorization'] = `${prefix} ${auth.token}`;
+                reqHeaders['Authorization'] = `${prefix} ${interpolate(auth.token)}`;
             } else if (auth.type === 'basic' && (auth.username || auth.password)) {
-                const encoded = btoa(`${auth.username}:${auth.password}`);
+                const encoded = btoa(`${interpolate(auth.username)}:${interpolate(auth.password)}`);
                 reqHeaders['Authorization'] = `Basic ${encoded}`;
             } else if (auth.type === 'api-key' && auth.key) {
                 if (auth.addTo === 'header') {
-                    reqHeaders[auth.key] = auth.value;
+                    reqHeaders[interpolate(auth.key)] = interpolate(auth.value);
                 } else {
-                    reqParams[auth.key] = auth.value;
+                    reqParams[interpolate(auth.key)] = interpolate(auth.value);
                 }
             }
 
@@ -74,19 +82,19 @@ export function useRequest() {
 
             if (method !== 'GET' && bodyType !== 'none') {
                 if (bodyType === 'json') {
-                    reqData = body;
+                    reqData = interpolate(body);
                     reqHeaders['Content-Type'] ??= 'application/json';
                 } else if (bodyType === 'xml') {
-                    reqData = body;
+                    reqData = interpolate(body);
                     reqHeaders['Content-Type'] ??= 'application/xml';
                 } else if (bodyType === 'text') {
-                    reqData = body;
+                    reqData = interpolate(body);
                     reqHeaders['Content-Type'] ??= 'text/plain';
                 } else if (bodyType === 'form') {
                     const fd = new URLSearchParams();
                     formBody
                         .filter((f) => f.enabled && f.key)
-                        .forEach((f) => fd.append(f.key, f.value));
+                        .forEach((f) => fd.append(interpolate(f.key), interpolate(f.value)));
                     reqData = fd.toString();
                     reqHeaders['Content-Type'] ??= 'application/x-www-form-urlencoded';
                 } else if (bodyType === 'multipart') {
@@ -97,9 +105,9 @@ export function useRequest() {
                         .forEach((f) => {
                             if (f.type === 'file') {
                                 const file = multipartFiles[f.id];
-                                if (file) fd.append(f.key, file, file.name);
+                                if (file) fd.append(interpolate(f.key), file, file.name);
                             } else {
-                                fd.append(f.key, f.value);
+                                fd.append(interpolate(f.key), interpolate(f.value));
                             }
                         });
                     reqData = fd;
@@ -108,7 +116,7 @@ export function useRequest() {
 
             const start = performance.now();
 
-            const targetUrl = new URL(url.trim());
+            const targetUrl = new URL(resolvedUrl);
             Object.entries(reqParams).forEach(([k, v]) => targetUrl.searchParams.append(k, v));
 
             const { requestUrl, proxyHeaders } = resolveTransport(targetUrl.toString());

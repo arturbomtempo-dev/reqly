@@ -8,13 +8,15 @@ import { storageGet, storageSet } from '@/core/storage';
 import { Button } from '@/shared/components/ui/Button';
 import { Input } from '@/shared/components/ui/Input';
 import { cn } from '@/shared/utils/cn';
-import { FolderOpen, FolderPlus, Plus } from 'lucide-react';
+import { Braces, Download, FolderOpen, FolderPlus, Plus, Upload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useRequestStore } from '../../_store';
 import { useCollectionsStore } from '../../_store/collections';
 import { useTabsStore } from '../../_store/tabs';
 import { CollectionItem } from './CollectionItem';
+import { ImportCollectionDialog } from './ImportCollectionDialog';
 import { RecentSection } from './RecentSection';
+import { VariablesDialog } from './VariablesDialog';
 import { captureSnapshot } from './utils';
 
 function NewCollectionInput({ onDone }: { onDone: () => void }) {
@@ -55,6 +57,8 @@ export function Sidebar() {
     const { addTab, syncActiveTab } = useTabsStore();
     const { initFromSnapshot } = useRequestStore();
     const [creating, setCreating] = useState(false);
+    const [importOpen, setImportOpen] = useState(false);
+    const [variablesOpen, setVariablesOpen] = useState(false);
 
     const [width, setWidth] = useState<number>(() => {
         const stored = storageGet<number>(SIDEBAR_WIDTH_STORAGE_KEY);
@@ -122,6 +126,26 @@ export function Sidebar() {
                     <Button
                         variant="ghost"
                         size="icon"
+                        onClick={() => setVariablesOpen(true)}
+                        className="h-6 w-6 text-muted-foreground hover:text-(--color-text)"
+                        aria-label="Variables"
+                        title="Global Variables"
+                    >
+                        <Braces className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setImportOpen(true)}
+                        className="h-6 w-6 text-muted-foreground hover:text-(--color-text)"
+                        aria-label="Import collection"
+                        title="Import Collection"
+                    >
+                        <Upload className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={handleNewRequest}
                         className="h-6 w-6 text-muted-foreground hover:text-(--color-text)"
                         aria-label="New request"
@@ -167,6 +191,9 @@ export function Sidebar() {
                     )}
                 />
             </div>
+
+            <ImportCollectionDialog open={importOpen} onClose={() => setImportOpen(false)} />
+            <VariablesDialog open={variablesOpen} onClose={() => setVariablesOpen(false)} />
         </div>
     );
 }
