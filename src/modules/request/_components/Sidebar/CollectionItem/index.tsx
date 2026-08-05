@@ -17,7 +17,7 @@ import { ContextMenu } from '../ContextMenu';
 import { drag } from '../drag';
 import { InlineEdit } from '../InlineEdit';
 import { RequestItem } from '../RequestItem';
-import { captureSnapshot } from '../utils';
+import { captureSnapshot, openSavedRequest } from '../utils';
 
 function NewFolderInput({ depth, onDone }: { depth: number; onDone: (name: string) => void }) {
     const [name, setName] = useState('');
@@ -66,8 +66,16 @@ export function CollectionItem({
         removeCollection,
         addFolder,
         addRequest,
+        updateRequest,
         moveRequest,
     } = useCollectionsStore();
+
+    const createAndOpenRequest = () => {
+        const snapshot = defaultSnapshot();
+        const id = addRequest(collection.id, 'New Request', snapshot);
+        openSavedRequest({ id, name: 'New Request', snapshot }, collection.id);
+        if (!expanded) toggleExpanded(collection.id);
+    };
 
     const expanded = expandedIds.includes(collection.id);
     const [editing, setEditing] = useState(false);
@@ -105,18 +113,25 @@ export function CollectionItem({
                     tab.id === useTabsStore.getState().activeTabId
                         ? captureSnapshot()
                         : tab.snapshot;
-                const url = snapshot.url.trim();
-                let name = tab.name || 'New Request';
-                if (!tab.name && url) {
-                    try {
-                        const parsed = new URL(url);
-                        name = parsed.pathname === '/' ? parsed.hostname : parsed.pathname;
-                    } catch {
-                        name = url.length > 24 ? url.slice(0, 24) + '…' : url;
+
+                if (tab.savedRequestId && tab.collectionId) {
+                    moveRequest(tab.collectionId, collection.id, tab.savedRequestId);
+                    updateRequest(collection.id, tab.savedRequestId, snapshot);
+                    useTabsStore.getState().linkTab(tab.id, tab.savedRequestId, collection.id);
+                } else {
+                    const url = snapshot.url.trim();
+                    let name = tab.name || 'New Request';
+                    if (!tab.name && url) {
+                        try {
+                            const parsed = new URL(url);
+                            name = parsed.pathname === '/' ? parsed.hostname : parsed.pathname;
+                        } catch {
+                            name = url.length > 24 ? url.slice(0, 24) + '…' : url;
+                        }
                     }
+                    const requestId = addRequest(collection.id, name, snapshot);
+                    useTabsStore.getState().linkTab(tab.id, requestId, collection.id);
                 }
-                const requestId = addRequest(collection.id, name, snapshot);
-                useTabsStore.getState().linkTab(tab.id, requestId, collection.id);
                 if (!expanded) toggleExpanded(collection.id);
             }
         } else if (
@@ -224,8 +239,7 @@ export function CollectionItem({
                         type="button"
                         onClick={(e) => {
                             e.stopPropagation();
-                            addRequest(collection.id, 'New Request', defaultSnapshot());
-                            if (!expanded) toggleExpanded(collection.id);
+                            createAndOpenRequest();
                         }}
                         className="flex items-center gap-1.5 pr-2 py-1 w-full text-[11px] text-muted-foreground hover:text-(--color-text) transition-colors cursor-pointer"
                         style={{ paddingLeft: `${28 + depth * 12}px` }}
@@ -257,10 +271,7 @@ export function CollectionItem({
                         {
                             label: 'New request',
                             icon: Plus,
-                            onClick: () => {
-                                addRequest(collection.id, 'New Request', defaultSnapshot());
-                                if (!expanded) toggleExpanded(collection.id);
-                            },
+                            onClick: createAndOpenRequest,
                         },
                         {
                             label: depth === 0 ? 'Delete collection' : 'Delete folder',

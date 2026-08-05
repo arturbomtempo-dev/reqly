@@ -6,15 +6,12 @@ import { TabBar } from './_components/TabBar';
 import { TopBar } from './_components/TopBar';
 import { UrlBar } from './_components/UrlBar';
 import { _resetSkipCollectionSync, _skipCollectionSync, useRequestStore } from './_store';
-import { useCollectionsStore } from './_store/collections';
+import { indexRequests, useCollectionsStore } from './_store/collections';
 import { useTabsStore } from './_store/tabs';
-import type { TabSnapshot } from './_types';
+import type { Collection, TabSnapshot } from './_types';
 
 export function RequestModule() {
     useEffect(() => {
-        let prevMethod = useRequestStore.getState().method;
-        let prevUrl = useRequestStore.getState().url;
-
         return useRequestStore.subscribe((state) => {
             const snapshot: TabSnapshot = {
                 method: state.method,
@@ -32,8 +29,6 @@ export function RequestModule() {
 
             if (_skipCollectionSync) {
                 _resetSkipCollectionSync();
-                prevMethod = state.method;
-                prevUrl = state.url;
                 return;
             }
 
@@ -44,14 +39,18 @@ export function RequestModule() {
                 useCollectionsStore
                     .getState()
                     .updateRequest(activeTab.collectionId, activeTab.savedRequestId, snapshot);
-            } else if ((state.method !== prevMethod || state.url !== prevUrl) && prevUrl.trim()) {
-                useCollectionsStore
-                    .getState()
-                    .updateRequestByMethodUrl(prevMethod, prevUrl, snapshot);
             }
+        });
+    }, []);
 
-            prevMethod = state.method;
-            prevUrl = state.url;
+    useEffect(() => {
+        const reconcile = (collections: Collection[]) =>
+            useTabsStore.getState().reconcileLinks(indexRequests(collections));
+
+        reconcile(useCollectionsStore.getState().collections);
+
+        return useCollectionsStore.subscribe((state, prev) => {
+            if (state.collections !== prev.collections) reconcile(state.collections);
         });
     }, []);
 

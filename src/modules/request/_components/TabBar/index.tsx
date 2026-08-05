@@ -95,20 +95,10 @@ export function TabBar() {
         if (editingId) {
             const tab = tabs.find((t) => t.id === editingId);
             renameTab(editingId, editingValue);
-            if (tab && editingValue.trim()) {
-                if (tab.savedRequestId && tab.collectionId) {
-                    useCollectionsStore
-                        .getState()
-                        .renameRequest(tab.collectionId, tab.savedRequestId, editingValue);
-                } else {
-                    useCollectionsStore
-                        .getState()
-                        .renameRequestByMethodUrl(
-                            tab.snapshot.method,
-                            tab.snapshot.url,
-                            editingValue
-                        );
-                }
+            if (tab?.savedRequestId && tab.collectionId && editingValue.trim()) {
+                useCollectionsStore
+                    .getState()
+                    .renameRequest(tab.collectionId, tab.savedRequestId, editingValue);
             }
         }
         setEditingId(null);

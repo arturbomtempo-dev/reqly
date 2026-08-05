@@ -1,5 +1,6 @@
 import { useRequestStore } from '../../_store';
-import type { Collection, SavedRequest, Tab, TabSnapshot } from '../../_types';
+import { useTabsStore } from '../../_store/tabs';
+import type { SavedRequest, Tab, TabSnapshot } from '../../_types';
 
 export function captureSnapshot(): TabSnapshot {
     const {
@@ -28,21 +29,42 @@ export function captureSnapshot(): TabSnapshot {
     };
 }
 
-export function isTabInAnyCollection(tab: Tab, collections: Collection[]): boolean {
-    if (tab.savedRequestId) return true;
-    for (const col of collections) {
-        if (
-            col.requests.some(
-                (r) =>
-                    r.snapshot.method === tab.snapshot.method &&
-                    r.snapshot.url.trim() === tab.snapshot.url.trim() &&
-                    r.snapshot.url.trim() !== ''
-            )
-        )
-            return true;
-        if (isTabInAnyCollection(tab, col.folders ?? [])) return true;
+export function isTabSaved(tab: Tab): boolean {
+    return Boolean(tab.savedRequestId);
+}
+
+export function openSavedRequest(req: SavedRequest, collectionId: string): void {
+    const tabs = useTabsStore.getState();
+    const { initFromSnapshot } = useRequestStore.getState();
+
+    const linkedTab = tabs.tabs.find((t) => t.savedRequestId === req.id);
+    if (linkedTab) {
+        if (linkedTab.id !== tabs.activeTabId) {
+            tabs.syncActiveTab(captureSnapshot());
+            const fresh = useTabsStore.getState().tabs.find((t) => t.id === linkedTab.id);
+            useTabsStore.getState().setActiveTab(linkedTab.id);
+            initFromSnapshot(fresh?.snapshot ?? linkedTab.snapshot);
+        }
+        return;
     }
-    return false;
+
+    tabs.syncActiveTab(captureSnapshot());
+
+    const { tabs: synced, activeTabId } = useTabsStore.getState();
+    const activeTab = synced.find((t) => t.id === activeTabId);
+    const activeIsReusable = !activeTab?.savedRequestId && !activeTab?.snapshot.url.trim();
+
+    const targetTabId = activeIsReusable ? activeTabId : useTabsStore.getState().addTab();
+
+    const snapshot: TabSnapshot = {
+        ...req.snapshot,
+        auth: req.snapshot.auth ?? { type: 'none' },
+    };
+
+    initFromSnapshot(snapshot);
+    useTabsStore.getState().syncActiveTab(snapshot);
+    useTabsStore.getState().renameTab(targetTabId, req.name);
+    useTabsStore.getState().linkTab(targetTabId, req.id, collectionId);
 }
 
 export function requestLabel(req: SavedRequest): string {

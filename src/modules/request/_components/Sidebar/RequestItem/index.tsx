@@ -9,7 +9,7 @@ import { MethodBadge } from '../../MethodBadge';
 import { ContextMenu } from '../ContextMenu';
 import { drag } from '../drag';
 import { InlineEdit } from '../InlineEdit';
-import { captureSnapshot, requestLabel } from '../utils';
+import { captureSnapshot, openSavedRequest, requestLabel } from '../utils';
 
 export function RequestItem({
     req,
@@ -22,7 +22,7 @@ export function RequestItem({
 }) {
     const { renameRequest, removeRequest } = useCollectionsStore();
     const { initFromSnapshot } = useRequestStore();
-    const { addTab, syncActiveTab, setActiveTab, closeTab } = useTabsStore();
+    const { syncActiveTab, closeTab } = useTabsStore();
     const [editing, setEditing] = useState(false);
     const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
 
@@ -44,40 +44,7 @@ export function RequestItem({
 
     const openRequest = () => {
         if (editing) return;
-        const { tabs, activeTabId } = useTabsStore.getState();
-
-        const linkedTab = tabs.find((t) => t.savedRequestId === req.id);
-        if (linkedTab) {
-            if (linkedTab.id !== activeTabId) {
-                syncActiveTab(captureSnapshot());
-                const fresh = useTabsStore.getState().tabs.find((t) => t.id === linkedTab.id);
-                setActiveTab(linkedTab.id);
-                initFromSnapshot(fresh?.snapshot ?? linkedTab.snapshot);
-            }
-            return;
-        }
-
-        const snapshot = captureSnapshot();
-        syncActiveTab(snapshot);
-
-        const activeTab = tabs.find((t) => t.id === activeTabId);
-        const activeIsEmpty = !activeTab?.savedRequestId && !activeTab?.snapshot.url.trim();
-
-        let targetTabId: string;
-        if (activeIsEmpty) {
-            targetTabId = activeTabId;
-        } else {
-            targetTabId = addTab();
-        }
-
-        const reqSnapshot = {
-            ...req.snapshot,
-            auth: req.snapshot.auth ?? { type: 'none' as const },
-        };
-        initFromSnapshot(reqSnapshot);
-        useTabsStore.getState().syncActiveTab(reqSnapshot);
-        useTabsStore.getState().renameTab(targetTabId, req.name);
-        useTabsStore.getState().linkTab(targetTabId, req.id, collectionId);
+        openSavedRequest(req, collectionId);
     };
 
     const handleContextMenu = (e: React.MouseEvent) => {
@@ -124,14 +91,6 @@ export function RequestItem({
                                     .findTabByRequestId(req.id);
                                 if (linkedTab) {
                                     useTabsStore.getState().renameTab(linkedTab.id, name);
-                                } else {
-                                    useTabsStore
-                                        .getState()
-                                        .renameTabByMethodUrl(
-                                            req.snapshot.method,
-                                            req.snapshot.url,
-                                            name
-                                        );
                                 }
                             }
                             setEditing(false);

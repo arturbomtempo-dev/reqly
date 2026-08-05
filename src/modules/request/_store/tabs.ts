@@ -54,9 +54,9 @@ interface TabsActions {
     setActiveTab: (id: string) => void;
     syncActiveTab: (snapshot: TabSnapshot) => void;
     renameTab: (id: string, name: string) => void;
-    renameTabByMethodUrl: (method: string, url: string, name: string) => void;
     linkTab: (tabId: string, savedRequestId: string, collectionId: string) => void;
     findTabByRequestId: (savedRequestId: string) => Tab | undefined;
+    reconcileLinks: (requestIndex: Map<string, string>) => void;
     clearTabs: () => void;
 }
 
@@ -84,6 +84,8 @@ export const useTabsStore = create<TabsState & TabsActions>()(
                 }
 
                 const idx = tabs.findIndex((t) => t.id === id);
+                if (idx === -1) return null;
+
                 const neighbour = tabs[idx === 0 ? 1 : idx - 1];
                 const nextActiveId = activeTabId === id ? neighbour.id : activeTabId;
 
@@ -111,17 +113,6 @@ export const useTabsStore = create<TabsState & TabsActions>()(
                 }));
             },
 
-            renameTabByMethodUrl: (method, url, name) => {
-                const trimmed = name.trim();
-                set((s) => ({
-                    tabs: s.tabs.map((t) =>
-                        t.snapshot.method === method && t.snapshot.url.trim() === url.trim()
-                            ? { ...t, name: trimmed || undefined }
-                            : t
-                    ),
-                }));
-            },
-
             linkTab: (tabId, savedRequestId, collectionId) => {
                 set((s) => ({
                     tabs: s.tabs.map((t) =>
@@ -138,6 +129,32 @@ export const useTabsStore = create<TabsState & TabsActions>()(
 
             findTabByRequestId: (savedRequestId) => {
                 return get().tabs.find((t) => t.savedRequestId === savedRequestId);
+            },
+
+            reconcileLinks: (requestIndex) => {
+                set((s) => {
+                    let changed = false;
+
+                    const tabs = s.tabs.map((t) => {
+                        if (!t.savedRequestId) return t;
+
+                        const collectionId = requestIndex.get(t.savedRequestId);
+
+                        if (!collectionId) {
+                            changed = true;
+                            return { ...t, savedRequestId: undefined, collectionId: undefined };
+                        }
+
+                        if (collectionId !== t.collectionId) {
+                            changed = true;
+                            return { ...t, collectionId };
+                        }
+
+                        return t;
+                    });
+
+                    return changed ? { tabs } : s;
+                });
             },
 
             clearTabs: () => {

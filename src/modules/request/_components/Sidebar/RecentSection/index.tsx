@@ -6,16 +6,16 @@ import { useCollectionsStore } from '../../../_store/collections';
 import { useTabsStore } from '../../../_store/tabs';
 import { drag } from '../drag';
 import { TabItem } from '../TabItem';
-import { captureSnapshot, isTabInAnyCollection } from '../utils';
+import { captureSnapshot, isTabSaved } from '../utils';
 
 export function RecentSection() {
     const { tabs, activeTabId, addTab, syncActiveTab } = useTabsStore();
-    const { collections, removeRequest } = useCollectionsStore();
+    const { removeRequest } = useCollectionsStore();
     const { initFromSnapshot } = useRequestStore();
     const [expanded, setExpanded] = useState(true);
     const [dragOver, setDragOver] = useState(false);
 
-    const visibleTabs = tabs.filter((tab) => !isTabInAnyCollection(tab, collections));
+    const visibleTabs = tabs.filter((tab) => !isTabSaved(tab));
 
     const handleDragOver = (e: React.DragEvent) => {
         if (!drag.current || drag.current.type !== 'request') return;
