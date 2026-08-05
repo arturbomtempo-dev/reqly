@@ -1,5 +1,6 @@
+import { idbStorage } from '@/shared/utils/idb-storage';
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 export interface Variable {
     id: string;
@@ -77,6 +78,7 @@ export const useVariablesStore = create<VariablesState & VariablesActions>()(
         }),
         {
             name: 'reqly:variables',
+            storage: createJSONStorage(() => idbStorage),
         }
     )
 );

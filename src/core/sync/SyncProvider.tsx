@@ -25,6 +25,15 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         }
 
         (async () => {
+            if (!useCollectionsStore.persist.hasHydrated()) {
+                await new Promise<void>((resolve) => {
+                    const unsub = useCollectionsStore.persist.onFinishHydration(() => {
+                        unsub();
+                        resolve();
+                    });
+                });
+            }
+
             const localCollections = useCollectionsStore.getState().collections;
             const cloudCollections = await fetchCloudCollections();
 

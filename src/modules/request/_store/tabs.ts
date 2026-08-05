@@ -1,5 +1,6 @@
+import { idbStorage } from '@/shared/utils/idb-storage';
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import type { FormDataField, KV, Tab, TabSnapshot } from '../_types';
 
 function newKV(): KV {
@@ -62,9 +63,6 @@ interface TabsActions {
 
 const initialTab = newTab();
 
-// Large response bodies (big JSON payloads, HTML pages, etc.) can quietly fill
-// up localStorage's origin quota across several open tabs, starving other
-// features (like collection import) of space. Cap what gets persisted.
 const MAX_PERSISTED_RESPONSE_BODY = 200_000;
 
 export const useTabsStore = create<TabsState & TabsActions>()(
@@ -169,6 +167,7 @@ export const useTabsStore = create<TabsState & TabsActions>()(
         }),
         {
             name: 'reqly:tabs',
+            storage: createJSONStorage(() => idbStorage),
             partialize: (state) => ({
                 tabs: state.tabs.map((t) => ({
                     ...t,

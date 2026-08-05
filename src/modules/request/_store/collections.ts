@@ -1,5 +1,6 @@
+import { idbStorage } from '@/shared/utils/idb-storage';
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import type { Collection, SavedRequest, TabSnapshot } from '../_types';
 
 function uid(): string {
@@ -213,6 +214,7 @@ export const useCollectionsStore = create<CollectionsState & CollectionsActions>
         }),
         {
             name: 'reqly:collections',
+            storage: createJSONStorage(() => idbStorage),
             partialize: (state) => ({
                 collections: state.collections.map(deepClearResponses),
                 expandedIds: state.expandedIds,

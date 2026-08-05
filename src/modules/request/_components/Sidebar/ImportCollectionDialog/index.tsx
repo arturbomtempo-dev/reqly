@@ -37,10 +37,10 @@ export function ImportCollectionDialog({ open, onClose }: ImportCollectionDialog
                 }
                 collection.name = finalName;
 
-                useCollectionsStore.setState((s) => ({
+                await (useCollectionsStore.setState((s) => ({
                     collections: [...s.collections, collection],
                     expandedIds: [...s.expandedIds, collection.id],
-                }));
+                })) as unknown as Promise<void>);
 
                 if (variables.length > 0) {
                     const currentVars = useVariablesStore.getState().variables;
@@ -55,7 +55,7 @@ export function ImportCollectionDialog({ open, onClose }: ImportCollectionDialog
             } catch (err) {
                 if (err instanceof Error && err.name === 'QuotaExceededError') {
                     setError(
-                        'Not enough local storage space to save this collection. Try removing unused collections or clearing large saved responses, then import again.'
+                        'Not enough disk space to save this collection. Free up some space on your device, then import again.'
                     );
                 } else {
                     setError(err instanceof Error ? err.message : 'Failed to import collection');
