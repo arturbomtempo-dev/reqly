@@ -1,9 +1,9 @@
 import { Button } from '@/shared/components/ui/Button';
 import { Checkbox } from '@/shared/components/ui/Checkbox';
-import { Input } from '@/shared/components/ui/Input';
 import { Plus, Trash2 } from 'lucide-react';
 import { newKV } from '../../_store';
 import type { KV } from '../../_types';
+import { VariableInput } from '../VariableInput';
 
 interface KeyValueEditorProps {
     items: KV[];
@@ -37,13 +37,13 @@ export function KeyValueEditor({
                         onCheckedChange={(v) => update(kv.id, { enabled: !!v })}
                         className="shrink-0"
                     />
-                    <Input
+                    <VariableInput
                         placeholder={keyPlaceholder}
                         value={kv.key}
                         onChange={(e) => update(kv.id, { key: e.target.value })}
                         className="font-mono text-xs h-7"
                     />
-                    <Input
+                    <VariableInput
                         placeholder={valuePlaceholder}
                         value={kv.value}
                         onChange={(e) => update(kv.id, { value: e.target.value })}

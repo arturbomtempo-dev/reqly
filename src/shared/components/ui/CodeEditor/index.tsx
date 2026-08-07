@@ -7,6 +7,7 @@ import { EditorView } from '@codemirror/view';
 import { tags as t } from '@lezer/highlight';
 import CodeMirror from '@uiw/react-codemirror';
 import { useMemo } from 'react';
+import { createVariableExtensions, type VariableOption } from './variable-extensions';
 
 type CodeLanguage = 'json' | 'xml' | 'text';
 
@@ -17,6 +18,7 @@ interface CodeEditorProps {
     readOnly?: boolean;
     className?: string;
     minHeight?: string;
+    variables?: VariableOption[];
 }
 
 export function CodeEditor({
@@ -26,6 +28,7 @@ export function CodeEditor({
     readOnly = false,
     className,
     minHeight = '220px',
+    variables,
 }: CodeEditorProps) {
     const { theme } = useTheme();
     const isDark = theme === 'dark';
@@ -117,6 +120,11 @@ export function CodeEditor({
         [isDark, minHeight]
     );
 
+    const variableExtensions = useMemo(
+        () => (variables ? createVariableExtensions(variables) : []),
+        [variables]
+    );
+
     return (
         <div className={cn('h-full overflow-hidden bg-transparent', className)}>
             <CodeMirror
@@ -135,7 +143,12 @@ export function CodeEditor({
                     closeBrackets: !readOnly,
                     searchKeymap: false,
                 }}
-                extensions={[...languageExtensions, syntaxExtension, themeExtension]}
+                extensions={[
+                    ...languageExtensions,
+                    syntaxExtension,
+                    themeExtension,
+                    ...variableExtensions,
+                ]}
             />
         </div>
     );

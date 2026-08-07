@@ -1,6 +1,5 @@
 import { Button } from '@/shared/components/ui/Button';
 import { Checkbox } from '@/shared/components/ui/Checkbox';
-import { Input } from '@/shared/components/ui/Input';
 import {
     Select,
     SelectContent,
@@ -12,6 +11,7 @@ import { Paperclip, Plus, Trash2, X } from 'lucide-react';
 import { useRef } from 'react';
 import { newFormDataField } from '../../_store';
 import type { FormDataField } from '../../_types';
+import { VariableInput } from '../VariableInput';
 
 interface FormDataEditorProps {
     items: FormDataField[];
@@ -72,7 +72,7 @@ export function FormDataEditor({ items, onChange, files, onFilesChange }: FormDa
                         className="shrink-0"
                     />
 
-                    <Input
+                    <VariableInput
                         placeholder="Key"
                         value={field.key}
                         onChange={(e) => update(field.id, { key: e.target.value })}
@@ -97,7 +97,7 @@ export function FormDataEditor({ items, onChange, files, onFilesChange }: FormDa
                     </Select>
 
                     {field.type === 'text' ? (
-                        <Input
+                        <VariableInput
                             placeholder="Value"
                             value={field.value}
                             onChange={(e) => update(field.id, { value: e.target.value })}

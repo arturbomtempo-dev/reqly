@@ -135,8 +135,6 @@ interface InsomniaCollection {
     name?: string;
     meta?: { id?: string };
     collection?: InsomniaItem[];
-    // Real exports write a single base environment object with nested
-    // subEnvironments, not an array — but accept an array too for safety.
     environments?: InsomniaEnvironment | InsomniaEnvironment[];
 }
 

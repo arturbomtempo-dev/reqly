@@ -13,6 +13,7 @@
         "format": "prettier --write ."
     },
     "dependencies": {
+        "@codemirror/autocomplete": "^6.20.2",
         "@codemirror/lang-json": "^6.0.2",
         "@codemirror/lang-xml": "^6.1.0",
         "@radix-ui/react-checkbox": "^1.3.3",

@@ -10,6 +10,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/Tabs';
 import { usePersistedTab } from '@/shared/lib/use-persisted-tab';
 import { useRequestStore } from '../../_store';
+import { useVariablesStore } from '../../_store/variables';
 import type { BodyType } from '../../_types';
 import { AuthEditor } from '../AuthEditor';
 import { FormDataEditor } from '../FormDataEditor';
@@ -43,6 +44,7 @@ export function RequestPanel() {
         setMultipartFiles,
     } = useRequestStore();
 
+    const variables = useVariablesStore((s) => s.variables);
     const enabledParamsCount = params.filter((p) => p.enabled && p.key).length;
     const enabledHeadersCount = headers.filter((h) => h.enabled && h.key).length;
     const [activeTab, setActiveTab] = usePersistedTab('reqly:requestPanelTab', 'params');
@@ -139,6 +141,7 @@ export function RequestPanel() {
                                 language={bodyType}
                                 minHeight="220px"
                                 className="h-full"
+                                variables={variables}
                             />
                         )}
 

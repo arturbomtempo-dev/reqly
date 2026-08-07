@@ -1,5 +1,4 @@
 import { HTTP_METHODS } from '@/core/constants';
-import { Input } from '@/shared/components/ui/Input';
 import {
     Select,
     SelectContent,
@@ -15,6 +14,7 @@ import { newKV, useRequestStore } from '../../_store';
 import type { BodyType, HttpMethod, KV } from '../../_types';
 import { buildCurlCommand, parseCurlCommand } from '../../_utils/curl';
 import { METHOD_BORDER_COLORS, MethodBadge } from '../MethodBadge';
+import { VariableInput } from '../VariableInput';
 
 function toKVItems(data: Record<string, string>): KV[] {
     const entries = Object.entries(data);
@@ -144,7 +144,7 @@ export function UrlBar() {
 
                 <div className="w-px bg-(--color-border) shrink-0" />
 
-                <Input
+                <VariableInput
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
                     onKeyDown={handleKeyDown}
