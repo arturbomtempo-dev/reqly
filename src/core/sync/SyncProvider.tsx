@@ -1,76 +1,54 @@
 import { useAuth } from '@/core/auth';
-import { fetchCloudCollections, saveCollectionsToCloud } from '@/core/sync';
-import { useCollectionsStore } from '@/modules/request/_store/collections';
-import { useTabsStore } from '@/modules/request/_store/tabs';
-import type { Collection } from '@/modules/request/_types';
+import { clearToken } from '@/core/auth/token';
 import { useEffect, useRef, type ReactNode } from 'react';
+import { startSync, stopSync } from './engine';
+import { setSyncStatus } from './status';
 
-let _isSyncingFromCloud = false;
-
+/**
+ * Binds the sync engine to the session. The engine itself is framework-free;
+ * this is the only place that knows about React.
+ *
+ * Signing out is handled by the auth layer rather than here: the pending
+ * changes have to be flushed while the token is still valid, which means it
+ * cannot be a reaction to the user already being gone.
+ */
 export function SyncProvider({ children }: { children: ReactNode }) {
     const { user } = useAuth();
-    const prevUidRef = useRef<string | null>(null);
+    const startedFor = useRef<string | null>(null);
 
     useEffect(() => {
-        const currentUid = user?.uid ?? null;
-        const prevUid = prevUidRef.current;
+        const uid = user?.uid ?? null;
 
-        if (currentUid === prevUid) return;
-        prevUidRef.current = currentUid;
+        if (uid === startedFor.current) return;
+        startedFor.current = uid;
 
-        if (!currentUid) {
-            useCollectionsStore.getState().clearCollections();
-            useTabsStore.getState().clearTabs();
+        if (!uid) {
+            void stopSync({ flush: false });
+            setSyncStatus({ phase: 'local', pending: 0, error: null });
             return;
         }
 
-        (async () => {
-            if (!useCollectionsStore.persist.hasHydrated()) {
-                await new Promise<void>((resolve) => {
-                    const unsub = useCollectionsStore.persist.onFinishHydration(() => {
-                        unsub();
-                        resolve();
-                    });
-                });
-            }
-
-            const localCollections = useCollectionsStore.getState().collections;
-            const cloudCollections = await fetchCloudCollections();
-
-            const merged = mergeCollections(cloudCollections, localCollections);
-
-            _isSyncingFromCloud = true;
-            useCollectionsStore.setState({ collections: merged });
-            _isSyncingFromCloud = false;
-
-            await saveCollectionsToCloud(merged);
-        })();
-    }, [user]);
-
-    useEffect(() => {
-        if (!user) return;
-
-        const unsub = useCollectionsStore.subscribe((state, prevState) => {
-            if (_isSyncingFromCloud) return;
-            if (state.collections === prevState.collections) return;
-            saveCollectionsToCloud(state.collections);
+        void startSync(uid, () => {
+            // The session expired mid-flight. The workspace is deliberately left
+            // in place: signing back in merges it, whereas clearing it here
+            // would throw away anything not yet uploaded.
+            clearToken();
+            startedFor.current = null;
+            setSyncStatus({
+                phase: 'error',
+                error: 'Session expired. Sign in again to resume syncing.',
+            });
         });
 
-        return unsub;
+        // Tearing down here rather than in a separate mount-scoped effect keeps
+        // the ref and the engine in step, including through React's development
+        // double-mount, where the two would otherwise drift apart and leave the
+        // engine stopped while the ref still claims it is running.
+        return () => {
+            startedFor.current = null;
+            void stopSync({ flush: false });
+        };
     }, [user]);
 
     return <>{children}</>;
-}
-
-function mergeCollections(cloud: Collection[], local: Collection[]): Collection[] {
-    const merged = [...cloud];
-    const cloudIds = new Set(cloud.map((c) => c.id));
-
-    for (const localCol of local) {
-        if (!cloudIds.has(localCol.id)) {
-            merged.push(localCol);
-        }
-    }
-
-    return merged;
 }

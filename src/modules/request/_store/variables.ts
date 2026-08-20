@@ -1,3 +1,6 @@
+import { stamp } from '@/core/sync/clock';
+import { recordTombstones } from '@/core/sync/tombstones';
+import { flattenVariables, toTombstones } from '@/core/sync/workspace';
 import { idbStorage } from '@/shared/utils/idb-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
@@ -7,6 +10,7 @@ export interface Variable {
     key: string;
     value: string;
     enabled: boolean;
+    updatedAt: number;
 }
 
 function uid(): string {
@@ -14,7 +18,7 @@ function uid(): string {
 }
 
 export function newVariable(): Variable {
-    return { id: uid(), key: '', value: '', enabled: true };
+    return { id: uid(), key: '', value: '', enabled: true, updatedAt: stamp() };
 }
 
 interface VariablesState {
@@ -26,6 +30,8 @@ interface VariablesActions {
     addVariable: (key?: string, value?: string) => string;
     updateVariable: (id: string, partial: Partial<Variable>) => void;
     removeVariable: (id: string) => void;
+    /** Replaces the list with the result of a sync merge, without re-stamping versions. */
+    applySynced: (variables: Variable[]) => void;
     clearVariables: () => void;
     getVariableValue: (key: string) => string | undefined;
     interpolate: (text: string) => string;
@@ -36,27 +42,46 @@ export const useVariablesStore = create<VariablesState & VariablesActions>()(
         (set, get) => ({
             variables: [],
 
-            setVariables: (variables) => set({ variables }),
+            setVariables: (variables) => {
+                const previous = get().variables;
+                const nextIds = new Set(variables.map((v) => v.id));
+                const removed = previous.filter((v) => !nextIds.has(v.id));
+
+                if (removed.length > 0) {
+                    recordTombstones({ variables: toTombstones(flattenVariables(removed)) });
+                }
+
+                set({ variables: variables.map((v) => ({ ...v, updatedAt: stamp() })) });
+            },
 
             addVariable: (key = '', value = '') => {
                 const id = uid();
                 set((s) => ({
-                    variables: [...s.variables, { id, key, value, enabled: true }],
+                    variables: [
+                        ...s.variables,
+                        { id, key, value, enabled: true, updatedAt: stamp() },
+                    ],
                 }));
                 return id;
             },
 
             updateVariable: (id, partial) => {
                 set((s) => ({
-                    variables: s.variables.map((v) => (v.id === id ? { ...v, ...partial } : v)),
+                    variables: s.variables.map((v) =>
+                        v.id === id ? { ...v, ...partial, updatedAt: stamp() } : v
+                    ),
                 }));
             },
 
             removeVariable: (id) => {
-                set((s) => ({
-                    variables: s.variables.filter((v) => v.id !== id),
-                }));
+                const doomed = get().variables.filter((v) => v.id === id);
+                if (doomed.length > 0) {
+                    recordTombstones({ variables: toTombstones(flattenVariables(doomed)) });
+                }
+                set((s) => ({ variables: s.variables.filter((v) => v.id !== id) }));
             },
+
+            applySynced: (variables) => set({ variables }),
 
             clearVariables: () => set({ variables: [] }),
 
@@ -79,6 +104,15 @@ export const useVariablesStore = create<VariablesState & VariablesActions>()(
         {
             name: 'reqly:variables',
             storage: createJSONStorage(() => idbStorage),
+            onRehydrateStorage: () => (state) => {
+                if (state) {
+                    const fallback = Date.now();
+                    state.variables = state.variables.map((v) => ({
+                        ...v,
+                        updatedAt: v.updatedAt ?? fallback,
+                    }));
+                }
+            },
         }
     )
 );

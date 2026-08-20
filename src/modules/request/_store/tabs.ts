@@ -58,6 +58,7 @@ interface TabsActions {
     linkTab: (tabId: string, savedRequestId: string, collectionId: string) => void;
     findTabByRequestId: (savedRequestId: string) => Tab | undefined;
     reconcileLinks: (requestIndex: Map<string, string>) => void;
+    remapLinks: (collectionRemap: Map<string, string>, requestRemap: Map<string, string>) => void;
     clearTabs: () => void;
 }
 
@@ -158,6 +159,30 @@ export const useTabsStore = create<TabsState & TabsActions>()(
 
                     return changed ? { tabs } : s;
                 });
+            },
+
+            remapLinks: (collectionRemap, requestRemap) => {
+                if (collectionRemap.size === 0 && requestRemap.size === 0) return;
+
+                set((s) => ({
+                    tabs: s.tabs.map((t) => {
+                        const savedRequestId = t.savedRequestId
+                            ? (requestRemap.get(t.savedRequestId) ?? t.savedRequestId)
+                            : undefined;
+                        const collectionId = t.collectionId
+                            ? (collectionRemap.get(t.collectionId) ?? t.collectionId)
+                            : undefined;
+
+                        if (
+                            savedRequestId === t.savedRequestId &&
+                            collectionId === t.collectionId
+                        ) {
+                            return t;
+                        }
+
+                        return { ...t, savedRequestId, collectionId };
+                    }),
+                }));
             },
 
             clearTabs: () => {

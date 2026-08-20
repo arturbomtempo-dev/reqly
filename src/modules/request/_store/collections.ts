@@ -1,3 +1,6 @@
+import { stamp } from '@/core/sync/clock';
+import { recordTombstones } from '@/core/sync/tombstones';
+import { collectSubtreeIds, flattenCollections, toTombstones } from '@/core/sync/workspace';
 import { idbStorage } from '@/shared/utils/idb-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
@@ -53,10 +56,16 @@ function deepClearResponses(c: Collection): Collection {
     };
 }
 
-function normalizeCollection(c: Collection): Collection {
+/**
+ * Backfills `updatedAt` for workspaces persisted before sync existed. They are
+ * stamped once, at rehydration, so they carry a stable version from then on.
+ */
+function normalizeCollection(c: Collection, fallback: number): Collection {
     return {
         ...c,
-        folders: (c.folders ?? []).map(normalizeCollection),
+        updatedAt: c.updatedAt ?? fallback,
+        requests: c.requests.map((r) => ({ ...r, updatedAt: r.updatedAt ?? fallback })),
+        folders: (c.folders ?? []).map((f) => normalizeCollection(f, fallback)),
     };
 }
 
@@ -79,12 +88,15 @@ interface CollectionsActions {
     removeRequest: (collectionId: string, requestId: string) => void;
     updateRequest: (collectionId: string, requestId: string, snapshot: TabSnapshot) => void;
     moveRequest: (fromCollectionId: string, toCollectionId: string, requestId: string) => void;
+    importCollection: (collection: Collection) => void;
+    /** Replaces the tree with the result of a sync merge, without re-stamping versions. */
+    applySynced: (collections: Collection[]) => void;
     clearCollections: () => void;
 }
 
 export const useCollectionsStore = create<CollectionsState & CollectionsActions>()(
     persist(
-        (set) => ({
+        (set, get) => ({
             collections: [],
             expandedIds: [],
             sidebarOpen: false,
@@ -95,7 +107,10 @@ export const useCollectionsStore = create<CollectionsState & CollectionsActions>
             addCollection: (name) => {
                 const id = uid();
                 set((s) => ({
-                    collections: [...s.collections, { id, name, requests: [], folders: [] }],
+                    collections: [
+                        ...s.collections,
+                        { id, name, requests: [], folders: [], updatedAt: stamp() },
+                    ],
                     expandedIds: [...s.expandedIds, id],
                 }));
                 return id;
@@ -106,7 +121,10 @@ export const useCollectionsStore = create<CollectionsState & CollectionsActions>
                 set((s) => ({
                     collections: mapCollections(s.collections, parentId, (c) => ({
                         ...c,
-                        folders: [...(c.folders ?? []), { id, name, requests: [], folders: [] }],
+                        folders: [
+                            ...(c.folders ?? []),
+                            { id, name, requests: [], folders: [], updatedAt: stamp() },
+                        ],
                     })),
                     expandedIds: [...s.expandedIds, id],
                 }));
@@ -118,14 +136,33 @@ export const useCollectionsStore = create<CollectionsState & CollectionsActions>
                     collections: mapCollections(s.collections, id, (c) => ({
                         ...c,
                         name: name.trim() || c.name,
+                        updatedAt: stamp(),
                     })),
                 }));
             },
 
             removeCollection: (id) => {
+                // Deleting a collection deletes everything under it. Each of those
+                // rows needs its own tombstone, otherwise another device would keep
+                // the descendants alive as orphans after the parent's delete lands.
+                const flat = flattenCollections(get().collections);
+                const doomed = collectSubtreeIds(flat.collections, id);
+                const deletedAt = stamp();
+
+                recordTombstones({
+                    collections: toTombstones(
+                        flat.collections.filter((c) => doomed.has(c.id)),
+                        deletedAt
+                    ),
+                    requests: toTombstones(
+                        flat.requests.filter((r) => r.collectionId && doomed.has(r.collectionId)),
+                        deletedAt
+                    ),
+                });
+
                 set((s) => ({
                     collections: filterCollections(s.collections, id),
-                    expandedIds: s.expandedIds.filter((eid) => eid !== id),
+                    expandedIds: s.expandedIds.filter((eid) => !doomed.has(eid)),
                 }));
             },
 
@@ -143,6 +180,7 @@ export const useCollectionsStore = create<CollectionsState & CollectionsActions>
                     id,
                     name,
                     snapshot: { ...snapshot, response: null },
+                    updatedAt: stamp(),
                 };
                 set((s) => ({
                     collections: mapCollections(s.collections, collectionId, (c) => ({
@@ -158,13 +196,21 @@ export const useCollectionsStore = create<CollectionsState & CollectionsActions>
                     collections: mapCollections(s.collections, collectionId, (c) => ({
                         ...c,
                         requests: c.requests.map((r) =>
-                            r.id === requestId ? { ...r, name: name.trim() || r.name } : r
+                            r.id === requestId
+                                ? { ...r, name: name.trim() || r.name, updatedAt: stamp() }
+                                : r
                         ),
                     })),
                 }));
             },
 
             removeRequest: (collectionId, requestId) => {
+                const flat = flattenCollections(get().collections);
+                const doomed = flat.requests.filter((r) => r.id === requestId);
+                if (doomed.length > 0) {
+                    recordTombstones({ requests: toTombstones(doomed) });
+                }
+
                 set((s) => ({
                     collections: mapCollections(s.collections, collectionId, (c) => ({
                         ...c,
@@ -179,15 +225,15 @@ export const useCollectionsStore = create<CollectionsState & CollectionsActions>
                         ...c,
                         requests: c.requests.map((r) =>
                             r.id === requestId
-                                ? { ...r, snapshot: { ...snapshot, response: null } }
+                                ? {
+                                      ...r,
+                                      snapshot: { ...snapshot, response: null },
+                                      updatedAt: stamp(),
+                                  }
                                 : r
                         ),
                     })),
                 }));
-            },
-
-            clearCollections: () => {
-                set({ collections: [], expandedIds: [] });
             },
 
             moveRequest: (fromCollectionId, toCollectionId, requestId) => {
@@ -206,10 +252,23 @@ export const useCollectionsStore = create<CollectionsState & CollectionsActions>
                     return {
                         collections: mapCollections(detached, toCollectionId, (c) => ({
                             ...c,
-                            requests: [...c.requests, req],
+                            requests: [...c.requests, { ...req, updatedAt: stamp() }],
                         })),
                     };
                 });
+            },
+
+            importCollection: (collection) => {
+                set((s) => ({
+                    collections: [...s.collections, collection],
+                    expandedIds: [...s.expandedIds, collection.id],
+                }));
+            },
+
+            applySynced: (collections) => set({ collections }),
+
+            clearCollections: () => {
+                set({ collections: [], expandedIds: [] });
             },
         }),
         {
@@ -222,7 +281,10 @@ export const useCollectionsStore = create<CollectionsState & CollectionsActions>
             }),
             onRehydrateStorage: () => (state) => {
                 if (state) {
-                    state.collections = state.collections.map(normalizeCollection);
+                    const fallback = Date.now();
+                    state.collections = state.collections.map((c) =>
+                        normalizeCollection(c, fallback)
+                    );
                 }
             },
         }

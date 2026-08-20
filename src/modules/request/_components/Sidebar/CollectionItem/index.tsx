@@ -75,7 +75,10 @@ export function CollectionItem({
     const createAndOpenRequest = () => {
         const snapshot = defaultSnapshot();
         const id = addRequest(collection.id, 'New Request', snapshot);
-        openSavedRequest({ id, name: 'New Request', snapshot }, collection.id);
+        openSavedRequest(
+            { id, name: 'New Request', snapshot, updatedAt: Date.now() },
+            collection.id
+        );
         if (!expanded) toggleExpanded(collection.id);
     };
 

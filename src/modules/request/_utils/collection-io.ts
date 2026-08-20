@@ -1,3 +1,4 @@
+import { stamp } from '@/core/sync/clock';
 import * as yaml from 'js-yaml';
 import type {
     Auth,
@@ -302,7 +303,7 @@ function parsePostmanRequest(item: PostmanItem): SavedRequest | null {
         response: null,
     };
 
-    return { id: uid(), name: item.name, snapshot };
+    return { id: uid(), name: item.name, snapshot, updatedAt: stamp() };
 }
 
 function parsePostmanFolder(item: PostmanItem): Collection {
@@ -318,7 +319,7 @@ function parsePostmanFolder(item: PostmanItem): Collection {
         }
     }
 
-    return { id: uid(), name: item.name, requests, folders };
+    return { id: uid(), name: item.name, requests, folders, updatedAt: stamp() };
 }
 
 function parseInsomniaRequest(item: InsomniaItem): SavedRequest | null {
@@ -349,7 +350,7 @@ function parseInsomniaRequest(item: InsomniaItem): SavedRequest | null {
         response: null,
     };
 
-    return { id: uid(), name: item.name ?? 'Request', snapshot };
+    return { id: uid(), name: item.name ?? 'Request', snapshot, updatedAt: stamp() };
 }
 
 function parseInsomniaFolder(item: InsomniaItem): Collection {
@@ -365,7 +366,7 @@ function parseInsomniaFolder(item: InsomniaItem): Collection {
         }
     }
 
-    return { id: uid(), name: item.name ?? 'Folder', requests, folders };
+    return { id: uid(), name: item.name ?? 'Folder', requests, folders, updatedAt: stamp() };
 }
 
 export function parsePostmanCollection(data: PostmanCollection): {
@@ -389,7 +390,7 @@ export function parsePostmanCollection(data: PostmanCollection): {
         .filter((v) => !v.disabled && v.key)
         .map((v) => ({ key: v.key, value: v.value ?? '' }));
 
-    return { collection: { id: uid(), name, requests, folders }, variables };
+    return { collection: { id: uid(), name, requests, folders, updatedAt: stamp() }, variables };
 }
 
 function flattenInsomniaEnvironments(
@@ -433,7 +434,7 @@ export function parseInsomniaCollection(data: InsomniaCollection): {
         }
     }
 
-    return { collection: { id: uid(), name, requests, folders }, variables };
+    return { collection: { id: uid(), name, requests, folders, updatedAt: stamp() }, variables };
 }
 
 function parseInsomniaV4Export(data: InsomniaV4Export): {
@@ -465,7 +466,7 @@ function parseInsomniaV4Export(data: InsomniaV4Export): {
             }
         }
 
-        return { id: uid(), name: folderName, requests, folders };
+        return { id: uid(), name: folderName, requests, folders, updatedAt: stamp() };
     };
 
     const collection = buildFolder(workspace?._id ?? '', name);

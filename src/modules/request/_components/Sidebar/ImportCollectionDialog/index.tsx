@@ -14,7 +14,6 @@ interface ImportCollectionDialogProps {
 
 export function ImportCollectionDialog({ open, onClose }: ImportCollectionDialogProps) {
     const { collections } = useCollectionsStore();
-    const addCollection = useCollectionsStore((s) => s.addCollection);
     const [dragOver, setDragOver] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [importing, setImporting] = useState(false);
@@ -37,10 +36,9 @@ export function ImportCollectionDialog({ open, onClose }: ImportCollectionDialog
                 }
                 collection.name = finalName;
 
-                await (useCollectionsStore.setState((s) => ({
-                    collections: [...s.collections, collection],
-                    expandedIds: [...s.expandedIds, collection.id],
-                })) as unknown as Promise<void>);
+                // Goes through the store action so the sync engine sees the
+                // change and uploads the collection when the user is signed in.
+                useCollectionsStore.getState().importCollection(collection);
 
                 if (variables.length > 0) {
                     const currentVars = useVariablesStore.getState().variables;

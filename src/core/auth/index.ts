@@ -1,13 +1,10 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import { storageGet, storageRemove, storageSet } from '../storage';
+import { API_URL } from '@/core/http/api';
+import { clearLocalWorkspace, stopSync } from '@/core/sync/engine';
+import { setSyncStatus } from '@/core/sync/status';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { clearToken, getToken, setToken } from './token';
 
-const API_URL = import.meta.env.VITE_API_URL as string;
-
-if (!API_URL) {
-    throw new Error('VITE_API_URL is not defined. Check your .env file.');
-}
-
-const TOKEN_KEY = 'reqly:token';
+export { getToken } from './token';
 
 export interface AuthUser {
     uid: string;
@@ -21,25 +18,38 @@ export interface AuthState {
     user: AuthUser | null;
     loading: boolean;
     signInWithGoogle: () => void;
-    signOut: () => void;
+    /**
+     * Resolves to false when pending changes could not be uploaded. The local
+     * workspace is then left untouched rather than cleared, so nothing is lost.
+     */
+    signOut: () => Promise<boolean>;
+}
+
+/**
+ * Bridge exposed by the desktop shell. A packaged app cannot receive a
+ * `postMessage` from the API's origin, so it opens the flow itself and hands
+ * the token back through this channel instead.
+ */
+interface DesktopBridge {
+    signInWithGoogle: (authUrl: string) => Promise<string>;
+}
+
+function desktopBridge(): DesktopBridge | null {
+    return (window as unknown as { reqlyDesktop?: DesktopBridge }).reqlyDesktop ?? null;
 }
 
 export const AuthContext = createContext<AuthState>({
     user: null,
     loading: true,
     signInWithGoogle: () => {},
-    signOut: () => {},
+    signOut: async () => true,
 });
 
 export function useAuth(): AuthState {
     return useContext(AuthContext);
 }
 
-export function getToken(): string | null {
-    return storageGet<string>(TOKEN_KEY);
-}
-
-export function useAuthState() {
+export function useAuthState(): AuthState {
     const [user, setUser] = useState<AuthUser | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -50,14 +60,10 @@ export function useAuthState() {
             return;
         }
 
-        fetch(`${API_URL}/auth/me`, {
-            headers: { Authorization: `Bearer ${token}` },
-        })
-            .then((res) => (res.ok ? res.json() : Promise.reject()))
+        fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+            .then((res) => (res.ok ? res.json() : Promise.reject(new Error('Session expired'))))
             .then((data: { user: AuthUser }) => setUser(data.user))
-            .catch(() => {
-                storageRemove(TOKEN_KEY);
-            })
+            .catch(() => clearToken())
             .finally(() => setLoading(false));
     }, []);
 
@@ -71,11 +77,10 @@ export function useAuthState() {
                 type?: string;
                 token?: string;
                 user?: AuthUser;
-                error?: string;
             };
 
             if (data.type === 'auth-success' && data.token && data.user) {
-                storageSet(TOKEN_KEY, data.token);
+                setToken(data.token);
                 setUser(data.user);
             }
         };
@@ -84,16 +89,48 @@ export function useAuthState() {
         return () => window.removeEventListener('message', handler);
     }, []);
 
-    const signInWithGoogle = () => {
+    const signInWithGoogle = useCallback(() => {
+        const bridge = desktopBridge();
+
+        if (bridge) {
+            const url = new URL(`${API_URL}/auth/google`);
+            url.searchParams.set('mode', 'redirect');
+
+            void bridge
+                .signInWithGoogle(url.toString())
+                .then(async (token) => {
+                    setToken(token);
+                    const res = await fetch(`${API_URL}/auth/me`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                    });
+                    if (!res.ok) throw new Error('Sign in failed');
+                    const data = (await res.json()) as { user: AuthUser };
+                    setUser(data.user);
+                })
+                .catch(() => clearToken());
+
+            return;
+        }
+
         const url = new URL(`${API_URL}/auth/google`);
+        url.searchParams.set('mode', 'popup');
         url.searchParams.set('origin', window.location.origin);
         window.open(url.toString(), 'auth', 'popup,width=500,height=600');
-    };
+    }, []);
 
-    const signOut = () => {
-        storageRemove(TOKEN_KEY);
+    const signOut = useCallback(async () => {
+        // The flush has to happen while the token is still valid, so the engine
+        // is torn down before the session is.
+        const flushed = await stopSync({ flush: true });
+
+        if (flushed) clearLocalWorkspace();
+
+        clearToken();
         setUser(null);
-    };
+        setSyncStatus({ phase: 'local', error: null, pending: 0 });
+
+        return flushed;
+    }, []);
 
     return { user, loading, signInWithGoogle, signOut };
 }

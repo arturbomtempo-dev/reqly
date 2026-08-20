@@ -76,10 +76,17 @@ export interface Tab {
     snapshot: TabSnapshot;
 }
 
+/**
+ * Epoch milliseconds of the last local edit, on the server's clock. Drives
+ * last-write-wins during sync, so every mutation must refresh it.
+ */
+export type SyncClock = number;
+
 export interface SavedRequest {
     id: string;
     name: string;
     snapshot: TabSnapshot;
+    updatedAt: SyncClock;
 }
 
 export interface Collection {
@@ -87,4 +94,5 @@ export interface Collection {
     name: string;
     requests: SavedRequest[];
     folders: Collection[];
+    updatedAt: SyncClock;
 }
