@@ -36,8 +36,6 @@ export function ImportCollectionDialog({ open, onClose }: ImportCollectionDialog
                 }
                 collection.name = finalName;
 
-                // Goes through the store action so the sync engine sees the
-                // change and uploads the collection when the user is signed in.
                 useCollectionsStore.getState().importCollection(collection);
 
                 if (variables.length > 0) {

@@ -35,8 +35,6 @@ export function UserMenu() {
                 return;
             }
 
-            // Signed out, but the workspace stays: some changes never reached
-            // the server and clearing now would destroy them.
             setWarning(
                 'Some changes could not be uploaded, so your collections were kept on this device. Sign in again to finish syncing.'
             );

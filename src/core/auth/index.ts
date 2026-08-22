@@ -18,18 +18,9 @@ export interface AuthState {
     user: AuthUser | null;
     loading: boolean;
     signInWithGoogle: () => void;
-    /**
-     * Resolves to false when pending changes could not be uploaded. The local
-     * workspace is then left untouched rather than cleared, so nothing is lost.
-     */
     signOut: () => Promise<boolean>;
 }
 
-/**
- * Bridge exposed by the desktop shell. A packaged app cannot receive a
- * `postMessage` from the API's origin, so it opens the flow itself and hands
- * the token back through this channel instead.
- */
 interface DesktopBridge {
     signInWithGoogle: (authUrl: string) => Promise<string>;
 }
@@ -119,8 +110,6 @@ export function useAuthState(): AuthState {
     }, []);
 
     const signOut = useCallback(async () => {
-        // The flush has to happen while the token is still valid, so the engine
-        // is torn down before the session is.
         const flushed = await stopSync({ flush: true });
 
         if (flushed) clearLocalWorkspace();

@@ -3,7 +3,6 @@ import { measureClockSkew } from './clock';
 import type { FlatCollection, FlatRequest, FlatVariable, Workspace } from './types';
 import { emptyWorkspace } from './types';
 
-/** Wire records use ISO strings; the client works in epoch milliseconds. */
 type Wire<T> = Omit<T, 'updatedAt' | 'deletedAt'> & {
     updatedAt: string;
     deletedAt: string | null;

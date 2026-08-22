@@ -30,7 +30,6 @@ interface VariablesActions {
     addVariable: (key?: string, value?: string) => string;
     updateVariable: (id: string, partial: Partial<Variable>) => void;
     removeVariable: (id: string) => void;
-    /** Replaces the list with the result of a sync merge, without re-stamping versions. */
     applySynced: (variables: Variable[]) => void;
     clearVariables: () => void;
     getVariableValue: (key: string) => string | undefined;

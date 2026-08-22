@@ -15,7 +15,6 @@ export class ApiError extends Error {
         this.name = 'ApiError';
     }
 
-    /** Distinguishes "the server said no" from "the server was unreachable". */
     get isOffline(): boolean {
         return this.status === 0;
     }
@@ -27,7 +26,6 @@ export class ApiError extends Error {
 
 interface ApiRequestInit extends Omit<RequestInit, 'body'> {
     body?: unknown;
-    /** Set to false for endpoints that must not send credentials. */
     auth?: boolean;
 }
 

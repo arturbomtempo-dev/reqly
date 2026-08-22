@@ -3,7 +3,6 @@ import type { Collection, SavedRequest, TabSnapshot } from '@/modules/request/_t
 import { stamp } from './clock';
 import type { FlatCollection, FlatRequest, FlatVariable, Workspace } from './types';
 
-/** Responses are runtime-only; they never travel and are never persisted remotely. */
 function stripResponse(snapshot: TabSnapshot): TabSnapshot {
     return { ...snapshot, response: null };
 }
@@ -67,14 +66,6 @@ function bySortOrder<T extends { sortOrder: number; id: string }>(a: T, b: T): n
     return a.sortOrder - b.sortOrder || a.id.localeCompare(b.id);
 }
 
-/**
- * Rebuilds the nested tree the UI renders.
- *
- * Two safety rules matter more than fidelity here: a node whose parent is gone
- * is promoted to the root rather than dropped, and a parent chain that loops
- * (only reachable through corrupt data) is broken by promoting the node. The
- * sync layer must never be the reason a request disappears from the sidebar.
- */
 export function buildCollectionTree(
     collections: FlatCollection[],
     requests: FlatRequest[]
@@ -96,9 +87,6 @@ export function buildCollectionTree(
         const parentId = collection.parentId;
         if (!parentId || !byId.has(parentId)) return null;
 
-        // A missing ancestor higher up is fine: that ancestor gets promoted to
-        // the root and this node stays attached to its own parent. A cycle is
-        // not fine, so the node that closes the loop is promoted instead.
         const seen = new Set<string>([collection.id]);
         let current: string | null = parentId;
 
@@ -156,7 +144,6 @@ export function buildVariables(variables: FlatVariable[]): Variable[] {
         }));
 }
 
-/** The id itself plus every collection nested under it, at any depth. */
 export function collectSubtreeIds(collections: FlatCollection[], rootId: string): Set<string> {
     const childrenOf = new Map<string, string[]>();
     for (const collection of collections) {
@@ -179,7 +166,6 @@ export function collectSubtreeIds(collections: FlatCollection[], rootId: string)
     return ids;
 }
 
-/** Marks a set of rows as deleted at a single instant, ready to be pushed. */
 export function toTombstones<T extends { updatedAt: number; deletedAt: number | null }>(
     rows: T[],
     deletedAt: number = stamp()

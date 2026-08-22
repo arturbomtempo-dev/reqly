@@ -30,7 +30,6 @@ function relativeTime(timestamp: number): string {
     return `${Math.round(hours / 24)}d ago`;
 }
 
-/** Small coloured dot on the avatar, so sync state is visible without opening the menu. */
 export function SyncDot() {
     const phase = useSyncStatusStore((s) => s.phase);
 
@@ -84,7 +83,6 @@ export function SyncStatusLine() {
     );
 }
 
-/** One-off summary of what the sign-in merge did, shown until the menu is reopened. */
 export function MergeSummary() {
     const lastMerge = useSyncStatusStore((s) => s.lastMerge);
     if (!lastMerge) return null;

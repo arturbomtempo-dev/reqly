@@ -1,40 +1,10 @@
 import { normalizeName, normalizeUrl, requestSignature } from './signature';
 import type { FlatCollection, FlatRequest, FlatVariable, Workspace } from './types';
 
-/**
- * Merging a local workspace into a remote one.
- *
- * Two rules govern the whole file:
- *
- *   1. Nothing is ever dropped. Anything the algorithm cannot confidently pair
- *      up survives as its own entity on both sides of the merge.
- *   2. Nothing is duplicated without evidence. An entity is only folded into
- *      another when it is recognisably the same thing — same id, same place and
- *      name, or same content.
- *
- * The two rules pull against each other, so the tie-breaks are explicit and
- * conservative: when in doubt, keep both.
- *
- * The work happens in three passes:
- *
- *   Pass 1 — identity. Local ids that already exist remotely are the same
- *            entity, full stop.
- *   Pass 2 — recognition. A local-only entity is matched against unclaimed
- *            remote candidates by position and content, producing an id remap.
- *            Collections go first and top-down, so a child is matched inside
- *            the parent its own parent was matched into.
- *   Pass 3 — resolution. Every id in the union is resolved by last-write-wins,
- *            with deletions treated as ordinary updates.
- */
-
 export interface MergeStats {
-    /** Entities that existed only in the cloud. */
     fromRemote: number;
-    /** Entities that existed only locally and were uploaded as new. */
     fromLocal: number;
-    /** Local entities recognised as an existing cloud entity, so not duplicated. */
     linked: number;
-    /** Entities present on both sides where one version had to be discarded. */
     resolved: number;
 }
 
@@ -46,9 +16,7 @@ export interface MergeReport {
 
 export interface MergeOutcome {
     workspace: Workspace;
-    /** Local collection id -> canonical (cloud) id, for every collection recognised. */
     collectionRemap: Map<string, string>;
-    /** Local request id -> canonical (cloud) id, for every request recognised. */
     requestRemap: Map<string, string>;
     report: MergeReport;
 }
@@ -59,10 +27,6 @@ function emptyStats(): MergeStats {
     return { fromRemote: 0, fromLocal: 0, linked: 0, resolved: 0 };
 }
 
-/**
- * Last-write-wins. A tie goes to the cloud: the server is the shared source of
- * truth, and preferring it keeps every device converging on the same answer.
- */
 function resolve<T extends { updatedAt: number }>(remote: T | undefined, local: T | undefined): T {
     if (!remote) return local!;
     if (!local) return remote;
@@ -93,8 +57,6 @@ function mergeCollections(
     const localById = new Map(local.map((collection) => [collection.id, collection]));
     const claimed = new Set<string>();
 
-    // Candidates are grouped by parent, because "the collection called Payments"
-    // is only meaningful relative to where it sits in the tree.
     const remoteByParent = new Map<string, FlatCollection[]>();
     for (const collection of remote) {
         if (collection.deletedAt !== null) continue;
@@ -153,12 +115,6 @@ function mergeCollections(
     );
 }
 
-/**
- * Scores how likely two saved requests in the same collection are the same
- * request. Name and content each clear the bar on their own; a shared method or
- * URL only reinforces a match, never creates one — plenty of unrelated requests
- * are a GET to the same host.
- */
 function similarity(a: FlatRequest, b: FlatRequest): number {
     let score = 0;
 
@@ -199,9 +155,6 @@ function mergeRequests(
             : null,
     }));
 
-    // Every plausible pair is scored up front and the strongest are settled
-    // first, so a weak name-only match can never steal a request that is an
-    // exact content match for something else.
     const pairs: Array<{ localId: string; remoteId: string; score: number }> = [];
 
     for (const request of relocated) {
@@ -284,7 +237,6 @@ function resolveAll<T extends { id: string; updatedAt: number }>(
     const remoteById = new Map(remote.map((row) => [row.id, row]));
     const localById = new Map<string, T>();
 
-    // A remap can point two local rows at one canonical id; the newest wins.
     for (const row of local) {
         const current = localById.get(row.id);
         if (!current || row.updatedAt > current.updatedAt) localById.set(row.id, row);
@@ -307,9 +259,6 @@ function resolveAll<T extends { id: string; updatedAt: number }>(
 }
 
 export function mergeWorkspaces(remote: Workspace, local: Workspace): MergeOutcome {
-    // One remap per entity kind. Client ids are random 11-character strings, so
-    // sharing a single map would let an improbable collision between, say, a
-    // collection and a request quietly corrupt both.
     const collectionRemap = new Map<string, string>();
     const requestRemap = new Map<string, string>();
     const variableRemap = new Map<string, string>();
@@ -320,9 +269,6 @@ export function mergeWorkspaces(remote: Workspace, local: Workspace): MergeOutco
         variables: emptyStats(),
     };
 
-    // Order matters: collections must be remapped before requests are matched,
-    // because a request is only compared against candidates in the collection
-    // its own collection resolved to.
     const collections = mergeCollections(
         remote.collections,
         local.collections,
@@ -351,12 +297,6 @@ export function mergeWorkspaces(remote: Workspace, local: Workspace): MergeOutco
     };
 }
 
-/**
- * Applies server-authoritative changes to the workspace already in hand, keyed
- * strictly by id. Used for delta pulls and for conflicts a push came back with:
- * both carry entities we already know, so the recognition passes above would
- * add risk without adding value. A tie still goes to the server.
- */
 export function applyRemoteChanges(current: Workspace, incoming: Workspace): Workspace {
     return {
         collections: overlay(current.collections, incoming.collections),

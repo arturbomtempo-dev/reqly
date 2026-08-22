@@ -2,15 +2,10 @@ import { create } from 'zustand';
 import type { MergeReport } from './merge';
 
 export type SyncPhase =
-    /** Signed out: everything stays in this browser. */
     | 'local'
-    /** Reconciling the local workspace with the account on sign-in. */
     | 'merging'
-    /** A push or pull is in flight. */
     | 'syncing'
-    /** Everything local is on the server. */
     | 'synced'
-    /** Changes are queued because the server is unreachable. */
     | 'offline'
     | 'error';
 
@@ -19,7 +14,6 @@ interface SyncStatusState {
     pending: number;
     lastSyncedAt: number | null;
     error: string | null;
-    /** Summary of the last sign-in merge, surfaced once in the UI. */
     lastMerge: MergeReport | null;
 }
 

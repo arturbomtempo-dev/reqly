@@ -1,12 +1,5 @@
 import type { TabSnapshot } from '@/modules/request/_types';
 
-/**
- * The sync layer works on a flat, id-addressable view of the workspace. The UI
- * keeps collections as a nested tree, but a tree is a terrible unit of change:
- * flattening lets every collection, request and variable be versioned, merged
- * and deleted on its own.
- */
-
 export interface FlatCollection {
     id: string;
     parentId: string | null;

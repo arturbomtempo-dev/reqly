@@ -3,12 +3,6 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { FlatCollection, FlatRequest, FlatVariable, Workspace } from './types';
 
-/**
- * A deletion is a fact that has to travel. Dropping a row locally is invisible
- * to every other device, so each delete leaves a tombstone: the row as it last
- * looked, with `deletedAt` set. It is pushed like any other change and only
- * discarded once the server has acknowledged it.
- */
 interface TombstonesState {
     collections: Record<string, FlatCollection>;
     requests: Record<string, FlatRequest>;
@@ -21,7 +15,6 @@ interface TombstonesActions {
         requests?: FlatRequest[];
         variables?: FlatVariable[];
     }) => void;
-    /** Drops tombstones the server has confirmed, keeping the payload small. */
     forget: (ids: { collections?: string[]; requests?: string[]; variables?: string[] }) => void;
     clear: () => void;
     toWorkspace: () => Workspace;

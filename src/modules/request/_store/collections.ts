@@ -56,10 +56,6 @@ function deepClearResponses(c: Collection): Collection {
     };
 }
 
-/**
- * Backfills `updatedAt` for workspaces persisted before sync existed. They are
- * stamped once, at rehydration, so they carry a stable version from then on.
- */
 function normalizeCollection(c: Collection, fallback: number): Collection {
     return {
         ...c,
@@ -89,7 +85,6 @@ interface CollectionsActions {
     updateRequest: (collectionId: string, requestId: string, snapshot: TabSnapshot) => void;
     moveRequest: (fromCollectionId: string, toCollectionId: string, requestId: string) => void;
     importCollection: (collection: Collection) => void;
-    /** Replaces the tree with the result of a sync merge, without re-stamping versions. */
     applySynced: (collections: Collection[]) => void;
     clearCollections: () => void;
 }
@@ -142,9 +137,6 @@ export const useCollectionsStore = create<CollectionsState & CollectionsActions>
             },
 
             removeCollection: (id) => {
-                // Deleting a collection deletes everything under it. Each of those
-                // rows needs its own tombstone, otherwise another device would keep
-                // the descendants alive as orphans after the parent's delete lands.
                 const flat = flattenCollections(get().collections);
                 const doomed = collectSubtreeIds(flat.collections, id);
                 const deletedAt = stamp();

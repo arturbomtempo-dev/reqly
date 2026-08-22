@@ -2,13 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { applyRemoteChanges, mergeWorkspaces } from './merge';
 import type { FlatCollection, FlatRequest, FlatVariable, Workspace } from './types';
 
-/**
- * The merge decides whether someone keeps their work when they sign in. Each
- * case below is a situation a real user can walk into, and the assertions are
- * the promise the app makes: nothing disappears, nothing is duplicated twice
- * over, and the newer edit wins.
- */
-
 type Snapshot = FlatRequest['snapshot'];
 
 function snap(method: string, url: string, body = ''): Snapshot {

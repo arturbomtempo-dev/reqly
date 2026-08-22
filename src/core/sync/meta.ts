@@ -4,18 +4,8 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import type { EntityKind, Workspace } from './types';
 import { versionKey } from './types';
 
-/**
- * Bookkeeping the sync engine needs across reloads.
- *
- * `versions` is the record of what the server is known to hold: entity key ->
- * the `updatedAt` it acknowledged. Anything whose local `updatedAt` differs is
- * pending, which is how an edit made while offline is still pending after a
- * refresh instead of being silently forgotten.
- */
 interface SyncMetaState {
-    /** The account this bookkeeping belongs to; a different uid invalidates it. */
     uid: string | null;
-    /** Server-issued cursor for delta pulls. */
     cursor: string | null;
     clockSkewMs: number;
     lastSyncedAt: number | null;
@@ -27,7 +17,6 @@ interface SyncMetaActions {
     setCursor: (cursor: string) => void;
     setClockSkew: (skewMs: number) => void;
     markSynced: (workspace: Workspace, at: number) => void;
-    /** Drops bookkeeping for entities that no longer exist on either side. */
     pruneVersions: (liveKeys: Set<string>) => void;
 }
 
